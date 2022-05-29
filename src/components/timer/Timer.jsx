@@ -1,44 +1,64 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useReducer } from "react";
 
 function setDefaultValue() {
   const userCount = localStorage.getItem("count");
   return userCount ? +userCount : 0;
 }
 
+const countReducer = (state, { type }) => {
+  if (type === "START") {
+    return {
+      ...state,
+      isCounting: true,
+    };
+  }
+
+  if (type === "STOP") {
+    return {
+      ...state,
+      isCounting: false,
+    };
+  }
+
+  if (type === "RESET") {
+    return {
+      count: 0,
+      isCounting: false,
+    };
+  }
+
+  if (type === "TICK") {
+    return {
+      ...state,
+      count: state.count + 1,
+    };
+  }
+
+  return state;
+};
+
 export const Timer = () => {
-  const [count, setCount] = useState(setDefaultValue());
-  const [isCounting, setCounting] = useState(false);
-  const timerId = useRef(null);
+  const [{ count, isCounting }, dispatch] = useReducer(countReducer, {
+    count: setDefaultValue(),
+    isCounting: false,
+  });
 
   useEffect(() => {
     localStorage.setItem("count", count);
   }, [count]);
 
   useEffect(() => {
+    let timerId = null;
     if (isCounting) {
-      timerId.current = setInterval(() => {
-        setCount((prevState) => prevState + 1);
+      timerId = setInterval(() => {
+        dispatch({ type: "TICK" });
       }, 1000);
     }
     return () => {
-      timerId.current && clearInterval(timerId.current);
-      timerId.current = null;
+      timerId && clearInterval(timerId);
+      timerId = null;
     };
   }, [isCounting]);
-
-  const handleStop = () => {
-    setCounting(false);
-    clearInterval(timerId.current);
-  };
-
-  const handleStart = () => {
-    setCounting(true);
-  };
-
-  const handleReset = () => {
-    setCount(0);
-    setCounting(false);
-  };
 
   return (
     <div style={TimerStyle} className="Timer">
@@ -46,11 +66,14 @@ export const Timer = () => {
         <h1>React Timer</h1>
         <h3>{count}</h3>
         {!isCounting ? (
-          <button onClick={handleStart}>Start</button>
+          <button onClick={() => dispatch({ type: "START" })}>Start</button>
         ) : (
-          <button onClick={handleStop}>Stop</button>
+          <button onClick={() => dispatch({ type: "STOP" })}>Stop</button>
         )}
-        <button disabled={isCounting ? "disabled" : ""} onClick={handleReset}>
+        <button
+          disabled={isCounting ? "disabled" : ""}
+          onClick={() => dispatch({ type: "RESET" })}
+        >
           Reset
         </button>
       </div>
